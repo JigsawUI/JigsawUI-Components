@@ -5,14 +5,24 @@
   "description": "Headless, unstyled, state-machine driven primitives for React.",
   "author": "JigsawUI",
   "license": "MIT",
+  "sideEffects": false,
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/JigsawUI/JigsawUI-Components.git"
+  },
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
     },
     "./package.json": "./package.json"
   },
@@ -22,8 +32,8 @@
   ],
   "scripts": {
     "dev": "tsup --watch",
-    "build": "bun x tsup",
-    "typecheck": "bun x tsc --noEmit",
+    "build": "tsup",
+    "typecheck": "tsc --noEmit",
     "test": "bun test",
     "clean": "rm -rf dist node_modules",
     "prepublishOnly": "bun run build"
@@ -31,6 +41,9 @@
   "peerDependencies": {
     "react": "^19.2.3",
     "react-dom": "^19.2.3"
+  },
+  "dependencies": {
+    "@floating-ui/react": "^0.27.16"
   },
   "devDependencies": {
     "@happy-dom/global-registrator": "^20.0.11",
@@ -51,8 +64,5 @@
     "unstyled",
     "accessibility",
     "jigsawui"
-  ],
-  "dependencies": {
-    "@floating-ui/react": "^0.27.16"
-  }
+  ]
 }
