@@ -1,0 +1,60 @@
+name: Publish to GitHub Packages
+
+on:
+  push:
+    branches: [main, develop]
+  workflow_dispatch:
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+
+      - name: Install Dependencies
+        run: bun install
+
+      - name: Run Tests
+        run: bun test
+
+      - name: Build and Prepare Package
+        run: |
+          bun run build
+          cp README.md dist/
+
+          node -e "
+            const pkg = require('./package.json');
+            delete pkg.scripts;
+            delete pkg.devDependencies;
+            
+            pkg.main = './index.cjs';
+            pkg.module = './index.js';
+            pkg.types = './index.d.ts';
+            pkg.publishConfig = {
+              'registry': 'https://npm.pkg.github.com'
+            };
+            pkg.exports = {
+              '.': {
+                'import': { 'types': './index.d.ts', 'default': './index.js' },
+                'require': { 'types': './index.d.cts', 'default': './index.cjs' }
+              }
+            };
+            console.log(JSON.stringify(pkg, null, 2));
+          " > dist/package.json
+
+      - name: Publish to GitHub Packages
+        run: |
+          npm config set //npm.pkg.github.com/:_authToken ${{ secrets.GITHUB_TOKEN }}
+          cd dist
+          npm publish
