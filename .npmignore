@@ -1,0 +1,16 @@
+/*
+
+# Re-include only the production files
+!/dist
+!/README.md
+!/package.json
+!/LICENSE
+
+# Specifically exclude source and configs
+src/
+tsconfig.json
+tsup.config.cjs
+happydom.ts
+bun.lock
+bunfig.toml
+.github/

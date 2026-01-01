@@ -1,6 +1,5 @@
 import { expect, test, describe } from "bun:test";
 import { render, screen, fireEvent } from "@testing-library/react";
-import React from "react";
 import {
   Accordion,
   AccordionItem,
@@ -13,8 +12,8 @@ describe("JigsawUI Accordion", () => {
     render(
       <Accordion type="single">
         <AccordionItem value="item-1">
-          <AccordionTrigger value="item-1">Is it accessible?</AccordionTrigger>
-          <AccordionContent value="item-1">
+          <AccordionTrigger>Is it accessible?</AccordionTrigger>
+          <AccordionContent>
             Yes, it follows WAI-ARIA patterns.
           </AccordionContent>
         </AccordionItem>
@@ -32,12 +31,12 @@ describe("JigsawUI Accordion", () => {
     render(
       <Accordion type="single">
         <AccordionItem value="1">
-          <AccordionTrigger value="1">T1</AccordionTrigger>
-          <AccordionContent value="1">C1</AccordionContent>
+          <AccordionTrigger>T1</AccordionTrigger>
+          <AccordionContent>C1</AccordionContent>
         </AccordionItem>
         <AccordionItem value="2">
-          <AccordionTrigger value="2">T2</AccordionTrigger>
-          <AccordionContent value="2">C2</AccordionContent>
+          <AccordionTrigger>T2</AccordionTrigger>
+          <AccordionContent>C2</AccordionContent>
         </AccordionItem>
       </Accordion>
     );
@@ -55,12 +54,12 @@ test("navigates between triggers with ArrowDown and ArrowUp", () => {
   render(
     <Accordion type="single">
       <AccordionItem value="1">
-        <AccordionTrigger value="1">Trigger 1</AccordionTrigger>
-        <AccordionContent value="1">C1</AccordionContent>
+        <AccordionTrigger>Trigger 1</AccordionTrigger>
+        <AccordionContent>C1</AccordionContent>
       </AccordionItem>
       <AccordionItem value="2">
-        <AccordionTrigger value="2">Trigger 2</AccordionTrigger>
-        <AccordionContent value="2">C2</AccordionContent>
+        <AccordionTrigger>Trigger 2</AccordionTrigger>
+        <AccordionContent>C2</AccordionContent>
       </AccordionItem>
     </Accordion>
   );
@@ -70,11 +69,9 @@ test("navigates between triggers with ArrowDown and ArrowUp", () => {
 
   firstTrigger.focus();
 
-  // Down to second
   fireEvent.keyDown(firstTrigger, { key: "ArrowDown" });
   expect(document.activeElement).toBe(secondTrigger);
 
-  // Up to first
   fireEvent.keyDown(secondTrigger, { key: "ArrowUp" });
   expect(document.activeElement).toBe(firstTrigger);
 });

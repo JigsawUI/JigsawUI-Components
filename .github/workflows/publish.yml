@@ -1,0 +1,83 @@
+name: Publish to NPM
+
+on:
+  push:
+    branches: [main, develop]
+  workflow_dispatch:
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+
+      - name: Install Dependencies
+        run: bun install
+
+      - name: Run Tests
+        run: bun test
+
+      - name: Check if version exists on NPM
+        id: check_version
+        run: |
+          PACKAGE_NAME=$(node -p "require('./package.json').name")
+          CURRENT_VERSION=$(node -p "require('./package.json').version")
+          if npm view "$PACKAGE_NAME@$CURRENT_VERSION" version > /dev/null 2>&1; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Build and Prepare Package
+        if: steps.check_version.outputs.exists == 'false'
+        run: |
+          bun run build
+          cp README.md dist/
+          
+          node -e "
+            const pkg = require('./package.json');
+            delete pkg.scripts;
+            delete pkg.devDependencies;
+            
+            pkg.main = './index.cjs';
+            pkg.module = './index.js';
+            pkg.types = './index.d.ts';
+            pkg.exports = {
+              '.': {
+                'import': { 'types': './index.d.ts', 'default': './index.js' },
+                'require': { 'types': './index.d.cts', 'default': './index.cjs' }
+              }
+            };
+            console.log(JSON.stringify(pkg, null, 2));
+          " > dist/package.json
+
+      - name: Determine Release Tag
+        if: steps.check_version.outputs.exists == 'false'
+        id: tag
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          if [[ $VERSION == *"rc"* ]]; then
+            echo "tag=rc" >> $GITHUB_OUTPUT
+          elif [[ $VERSION == *"dev"* ]] || [[ $VERSION == *"alpha"* ]] || [[ $VERSION == *"beta"* ]]; then
+            echo "tag=dev" >> $GITHUB_OUTPUT
+          else
+            echo "tag=latest" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Publish to NPM via OIDC
+        if: steps.check_version.outputs.exists == 'false'
+        run: |
+          npm publish dist \
+            --tag ${{ steps.tag.outputs.tag }} \
+            --access public \
+            --provenance

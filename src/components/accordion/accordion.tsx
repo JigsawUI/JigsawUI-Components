@@ -1,60 +1,81 @@
-import React, { createContext, useContext, useRef } from "react";
+import React, {
+  createContext,
+  useContext,
+  useId,
+  forwardRef,
+  useRef,
+} from "react";
 import { useAccordion, UseAccordionProps } from "./use-accordion";
 
 const AccordionContext = createContext<ReturnType<typeof useAccordion> | null>(
   null
 );
+const AccordionItemContext = createContext<{
+  value: string;
+  triggerId: string;
+  contentId: string;
+} | null>(null);
 
-export const Accordion = ({
-  children,
-  className,
-  ...props
-}: UseAccordionProps & { children: React.ReactNode; className?: string }) => {
-  const state = useAccordion(props);
-  const rootRef = useRef<HTMLDivElement>(null);
+export const Accordion = forwardRef(
+  (
+    { children, ...props }: UseAccordionProps & { children: React.ReactNode },
+    ref: React.Ref<HTMLDivElement>
+  ) => {
+    const state = useAccordion(props);
+    const rootRef = useRef<HTMLDivElement>(null);
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    const triggers = Array.from(
-      rootRef.current?.querySelectorAll("[data-jigsaw-accordion-trigger]") || []
-    ) as HTMLButtonElement[];
+    const handleKeyDown = (e: React.KeyboardEvent) => {
+      const triggers = Array.from(
+        rootRef.current?.querySelectorAll("[data-jigsaw-accordion-trigger]") ||
+          []
+      ) as HTMLButtonElement[];
 
-    const currentIndex = triggers.indexOf(
-      document.activeElement as HTMLButtonElement
+      const currentIndex = triggers.indexOf(
+        document.activeElement as HTMLButtonElement
+      );
+      if (currentIndex === -1) return;
+
+      let nextIndex = -1;
+      switch (e.key) {
+        case "ArrowDown":
+          nextIndex = (currentIndex + 1) % triggers.length;
+          break;
+        case "ArrowUp":
+          nextIndex = (currentIndex - 1 + triggers.length) % triggers.length;
+          break;
+        case "Home":
+          nextIndex = 0;
+          break;
+        case "End":
+          nextIndex = triggers.length - 1;
+          break;
+        default:
+          return;
+      }
+
+      if (nextIndex !== -1) {
+        e.preventDefault();
+        triggers[nextIndex].focus();
+      }
+    };
+
+    return (
+      <AccordionContext.Provider value={state}>
+        <div
+          ref={(node) => {
+            (rootRef as any).current = node;
+            if (typeof ref === "function") ref(node);
+            else if (ref) (ref as any).current = node;
+          }}
+          onKeyDown={handleKeyDown}
+          {...state.getRootProps()}
+        >
+          {children}
+        </div>
+      </AccordionContext.Provider>
     );
-    if (currentIndex === -1) return;
-
-    let nextIndex = -1;
-    switch (e.key) {
-      case "ArrowDown":
-        nextIndex = (currentIndex + 1) % triggers.length;
-        break;
-      case "ArrowUp":
-        nextIndex = (currentIndex - 1 + triggers.length) % triggers.length;
-        break;
-      case "Home":
-        nextIndex = 0;
-        break;
-      case "End":
-        nextIndex = triggers.length - 1;
-        break;
-      default:
-        return;
-    }
-
-    if (nextIndex !== -1) {
-      e.preventDefault();
-      triggers[nextIndex].focus();
-    }
-  };
-
-  return (
-    <AccordionContext.Provider value={state}>
-      <div ref={rootRef} onKeyDown={handleKeyDown} className={className}>
-        {children}
-      </div>
-    </AccordionContext.Provider>
-  );
-};
+  }
+);
 
 export const AccordionItem = ({
   value,
@@ -63,48 +84,35 @@ export const AccordionItem = ({
   value: string;
   children: React.ReactNode;
 }) => {
-  const { value: activeValue } = useContext(AccordionContext)!;
-  const isOpen = Array.isArray(activeValue)
-    ? activeValue.includes(value)
-    : activeValue === value;
-  return <div data-jigsaw-state={isOpen ? "open" : "closed"}>{children}</div>;
+  const { getItemProps } = useContext(AccordionContext)!;
+  const id = useId();
+  const triggerId = `trigger-${id}`;
+  const contentId = `content-${id}`;
+
+  return (
+    <AccordionItemContext.Provider value={{ value, triggerId, contentId }}>
+      <div {...getItemProps(value)}>{children}</div>
+    </AccordionItemContext.Provider>
+  );
 };
 
 export const AccordionTrigger = ({
   children,
-  value,
+  className,
 }: {
   children: React.ReactNode;
-  value: string;
+  className?: string;
 }) => {
-  const { toggleItem, value: activeValue } = useContext(AccordionContext)!;
-  const isOpen = Array.isArray(activeValue)
-    ? activeValue.includes(value)
-    : activeValue === value;
+  const { getTriggerProps } = useContext(AccordionContext)!;
+  const { value, triggerId, contentId } = useContext(AccordionItemContext)!;
 
   return (
-    <h3>
+    <h3 style={{ margin: 0 }}>
       <button
-        type="button"
-        data-jigsaw-accordion-trigger=""
-        aria-expanded={isOpen}
-        onClick={() => toggleItem(value)}
-        style={{
-          width: "100%",
-          textAlign: "left",
-          display: "flex",
-          justifyContent: "space-between",
-        }}
+        className={className}
+        {...getTriggerProps(value, triggerId, contentId)}
       >
         {children}
-        <span
-          style={{
-            transform: isOpen ? "rotate(180deg)" : "rotate(0deg)",
-            transition: "transform 0.2s",
-          }}
-        >
-          ▼
-        </span>
       </button>
     </h3>
   );
@@ -112,28 +120,22 @@ export const AccordionTrigger = ({
 
 export const AccordionContent = ({
   children,
-  value,
 }: {
   children: React.ReactNode;
-  value: string;
 }) => {
-  const { value: activeValue } = useContext(AccordionContext)!;
-  const isOpen = Array.isArray(activeValue)
-    ? activeValue.includes(value)
-    : activeValue === value;
+  const { getContentProps } = useContext(AccordionContext)!;
+  const { value, contentId, triggerId } = useContext(AccordionItemContext)!;
+  const props = getContentProps(value, contentId, triggerId);
 
   return (
     <div
+      {...props}
       style={{
-        display: "grid",
-        gridTemplateRows: isOpen ? "1fr" : "0fr",
-        transition: "grid-template-rows 300ms ease",
+        display: props.hidden ? "none" : "block",
         overflow: "hidden",
       }}
     >
-      <div style={{ minHeight: 0 }}>
-        <div style={{ padding: "1rem" }}>{children}</div>
-      </div>
+      <div>{children}</div>
     </div>
   );
 };
